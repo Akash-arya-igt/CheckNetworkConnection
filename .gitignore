@@ -1,0 +1,10 @@
+*.user
+.vscode
+Source/.vs/
+Source/packages/
+Source/TestResults
+Binaries
+Output
+[Bb]in/
+[Oo]bj/
+Source/packages
