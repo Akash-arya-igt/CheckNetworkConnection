@@ -556,9 +556,9 @@ namespace PingIP
             List<PingServerDetail> lstServer = new List<PingServerDetail>();
             lstServer.Add(new PingServerDetail() { ServerIP = "57.191.128.244", ServerName = "americas.aticloud.aero", HostURL = "https://americas.aticloud.aero/vpn/index.html" });
             lstServer.Add(new PingServerDetail() { ServerIP = "57.241.128.244", ServerName = "americas-can.aticloud.aero", HostURL = "https://americas-can.aticloud.aero" });
-            //lstServer.Add(new PingServerDetail() { ServerIP = "57.255.52.37", ServerName = "americas-pss.aticloud.aero", HostURL = "" });
-            //lstServer.Add(new PingServerDetail() { ServerIP = "57.230.88.32", ServerName = "prod.horizon.sita.aero", HostURL = "https://prod.horizon.sita.aero" });
-            //lstServer.Add(new PingServerDetail() { ServerIP = "57.230.80.200", ServerName = "hm.horizon.dc.sita.aero", HostURL = "https://hm.horizon.dc.sita.aero" });
+            lstServer.Add(new PingServerDetail() { ServerIP = "57.255.52.37", ServerName = "americas-pss.aticloud.aero", HostURL = "" });
+            lstServer.Add(new PingServerDetail() { ServerIP = "57.230.88.32", ServerName = "prod.horizon.sita.aero", HostURL = "https://prod.horizon.sita.aero" });
+            lstServer.Add(new PingServerDetail() { ServerIP = "57.230.80.200", ServerName = "hm.horizon.dc.sita.aero", HostURL = "https://hm.horizon.dc.sita.aero" });
 
             return lstServer;
         }

@@ -54,7 +54,7 @@
             this.btnStartPing.Name = "btnStartPing";
             this.btnStartPing.Size = new System.Drawing.Size(75, 23);
             this.btnStartPing.TabIndex = 1;
-            this.btnStartPing.Text = "Ping IPs";
+            this.btnStartPing.Text = "Start Test";
             this.btnStartPing.UseVisualStyleBackColor = true;
             this.btnStartPing.Click += new System.EventHandler(this.btnStartPing_Click);
             // 
@@ -115,7 +115,7 @@
             this.Controls.Add(this.btnStartPing);
             this.Controls.Add(this.txtPingResult);
             this.Name = "frmPingIPs";
-            this.Text = "PingIPsForm";
+            this.Text = "Server Connection Analyzer";
             this.Shown += new System.EventHandler(this.frmPingIPs_Shown);
             this.ResumeLayout(false);
             this.PerformLayout();
