@@ -13,6 +13,7 @@ using NSpeedTest.Models;
 using System.Globalization;
 using PingIP.Models;
 using System.Diagnostics;
+using System.Net;
 
 namespace PingIP
 {
@@ -34,7 +35,7 @@ namespace PingIP
             bgw.ProgressChanged += new ProgressChangedEventHandler(bgw_ProgressChanged);
             bgw.RunWorkerCompleted += new RunWorkerCompletedEventHandler(bgw_RunWorkerCompleted);
             bgw.WorkerReportsProgress = true;
-            
+
             BindCountryDropdown();
         }
 
@@ -50,7 +51,7 @@ namespace PingIP
             string strTelnetResult = string.Empty;
 
             List<int> lstPort = new List<int> { 23, 80, 443 };
-            
+
             List<PingServerDetail> lstServer = GetServerList();
             int intTotalStepCount = (4 * lstServer.Count) + 1;
 
@@ -62,7 +63,6 @@ namespace PingIP
                 {
                     strResult.Append("Getting server detail with lowest latency..." + Environment.NewLine);
                     bgw.ReportProgress(0, 0);
-
                     var bestServer = SelectBestServer();
                     strResult.Append("Testing speed..." + Environment.NewLine);
                     var downloadSpeed = client.TestDownloadSpeed(bestServer, settings.Download.ThreadsPerUrl);
@@ -75,7 +75,7 @@ namespace PingIP
                     strResult.Append("Setting are not loaded correctly..." + Environment.NewLine);
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 strResult.Append("Unable to get internet connection speed due to: " + ex.Message + Environment.NewLine);
             }
@@ -88,26 +88,43 @@ namespace PingIP
             for (int i = 0; i < lstServer.Count; i++)
             {
                 serverIP = string.Empty;
+                string strPingedServerIP = string.Empty;
                 strCheckServer = lstServer[i].ServerName;
+                serverIP = !string.IsNullOrEmpty(serverIP) ? serverIP : lstServer[i].ServerIP;
                 strResult.Append("***************** Server Name: " + strCheckServer + " *****************" + Environment.NewLine);
 
                 #region STEP 2: LAUNCH BROWSER
                 if (lstServer[i].HostURL != null)
                 {
-                    strResult.Append(Environment.NewLine + "Launching URL: " + lstServer[i].HostURL + Environment.NewLine);
+                    strResult.Append(Environment.NewLine + "Checking health of applcation running on URL: " + lstServer[i].HostURL + Environment.NewLine);
                     try
                     {
-                        Process.Start("iexplore.exe", lstServer[i].HostURL);
+                        //Process.Start("iexplore.exe", lstServer[i].HostURL);
+                        HttpWebRequest req = (HttpWebRequest)WebRequest.Create(lstServer[i].HostURL);
+                        using (HttpWebResponse response = (HttpWebResponse)req.GetResponse())
+                        {
+                            if (response == null || response.StatusCode != HttpStatusCode.OK)
+                                strResult.Append("Application having some issue"
+                                                    + response != null && !string.IsNullOrEmpty(response.StatusCode.ToString())
+                                                        ? "(" + response.StatusCode.ToString() + ")"
+                                                        : string.Empty
+                                                    + Environment.NewLine);
+                            else
+                                strResult.Append("Application running healthy" + Environment.NewLine);
+
+
+                            response.Close();
+                        }
                     }
-                    catch(Exception ex)
+                    catch (Exception ex)
                     {
-                        strResult.Append("Unable to launch url due to: " + ex.Message + Environment.NewLine);
+                        strResult.Append(string.Format("Unable to get response from url {0} due to: {1}", lstServer[i].HostURL, ex.Message) + Environment.NewLine);
                     }
                 }
                 #endregion
 
                 strResult.Append(Environment.NewLine + "PING " + strCheckServer + Environment.NewLine);
-                intPct = (((4*i) + 2) * 100) / (intTotalStepCount);
+                intPct = (((4 * i) + 2) * 100) / (intTotalStepCount);
                 bgw.ReportProgress(intPct, i);
 
                 #region STEP 3: PING IP
@@ -116,6 +133,41 @@ namespace PingIP
                     for (int j = 0; j < 4; j++)
                     {
                         PingReply pingResult = ping.Send(strCheckServer, 3000);
+
+                        if (j == 0 && pingResult.Address != null && string.IsNullOrEmpty(strPingedServerIP))
+                            strPingedServerIP = pingResult.Address.ToString();
+
+                        if (pingResult.Status == IPStatus.Success)
+                        {
+                            strResult.AppendFormat(strPingFormat, strCheckServer, pingResult.Buffer.Length.ToString(), pingResult.RoundtripTime.ToString(), pingResult.Options.Ttl.ToString());
+                        }
+                        else
+                        {
+                            strResult.Append(pingResult.Status.ToString() + Environment.NewLine);
+                        }
+                        pingResult = null;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    strResult.Append("Unable to ping server due to: " + ex.Message + Environment.NewLine);
+                }
+
+                if (!string.IsNullOrEmpty(strPingedServerIP))
+                    strResult.Append("Server '" + strCheckServer + "' has IP: " + strPingedServerIP + Environment.NewLine);
+
+                strResult.Append(Environment.NewLine + "PING " + serverIP + Environment.NewLine);
+                try
+                {
+                    intPct = (int)(((4 * i) + 2.5) * 100) / (intTotalStepCount);
+                    bgw.ReportProgress(intPct, i);
+                }
+                catch { /*DO NOTHING*/}
+                try
+                {
+                    for (int j = 0; j < 4; j++)
+                    {
+                        PingReply pingResult = ping.Send(serverIP, 3000);
 
                         if (j == 0 && pingResult.Address != null)
                             serverIP = pingResult.Address.ToString();
@@ -131,13 +183,12 @@ namespace PingIP
                         pingResult = null;
                     }
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
                     strResult.Append("Unable to ping server due to: " + ex.Message + Environment.NewLine);
                 }
                 #endregion
 
-                serverIP = !string.IsNullOrEmpty(serverIP) ? serverIP : lstServer[i].ServerIP;
                 strResult.Append(Environment.NewLine + "TRACERT " + serverIP + Environment.NewLine);
                 intPct = (((4 * i) + 3) * 100) / (intTotalStepCount);
                 bgw.ReportProgress(intPct, i);
@@ -178,9 +229,9 @@ namespace PingIP
                         strResult.Append(strCheckServer + " " + port + " " + strTelnetResult + Environment.NewLine);
                     }
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
-                    strResult.Append("Unable to Telnet server due to: "+ ex.Message + Environment.NewLine);
+                    strResult.Append("Unable to Telnet server due to: " + ex.Message + Environment.NewLine);
                 }
 
                 strResult.Append(Environment.NewLine + Environment.NewLine);
@@ -255,7 +306,7 @@ namespace PingIP
                         MessageBox.Show("File saved: " + saveFileDialog1.FileName);
                     }
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
                     MessageBox.Show("Unable to save due to: " + ex.Message);
                 }
@@ -282,7 +333,7 @@ namespace PingIP
         {
             if (speed > 1024)
             {
-               return string.Format("{0} speed: {1} Mbps", type, Math.Round(speed / 1024, 2));
+                return string.Format("{0} speed: {1} Mbps", type, Math.Round(speed / 1024, 2));
             }
             else
             {
@@ -537,7 +588,7 @@ namespace PingIP
                 settings = client.GetSettings();
                 isSettingsLoaded = true;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 isSettingsLoaded = false;
                 MessageBox.Show("Unable to load settings due to: " + ex.Message);
@@ -550,15 +601,15 @@ namespace PingIP
                 DefaultCountry = strClosestCountry;
             }
         }
-        
+
         private List<PingServerDetail> GetServerList()
         {
             List<PingServerDetail> lstServer = new List<PingServerDetail>();
             lstServer.Add(new PingServerDetail() { ServerIP = "57.191.128.244", ServerName = "americas.aticloud.aero", HostURL = "https://americas.aticloud.aero/vpn/index.html" });
             lstServer.Add(new PingServerDetail() { ServerIP = "57.241.128.244", ServerName = "americas-can.aticloud.aero", HostURL = "https://americas-can.aticloud.aero" });
-            //lstServer.Add(new PingServerDetail() { ServerIP = "57.255.52.37", ServerName = "americas-pss.aticloud.aero", HostURL = "" });
-            //lstServer.Add(new PingServerDetail() { ServerIP = "57.230.88.32", ServerName = "prod.horizon.sita.aero", HostURL = "https://prod.horizon.sita.aero" });
-            //lstServer.Add(new PingServerDetail() { ServerIP = "57.230.80.200", ServerName = "hm.horizon.dc.sita.aero", HostURL = "https://hm.horizon.dc.sita.aero" });
+            lstServer.Add(new PingServerDetail() { ServerIP = "57.255.52.37", ServerName = "americas-pss.aticloud.aero", HostURL = "https://americas-pss.aticloud.aero" });
+            lstServer.Add(new PingServerDetail() { ServerIP = "57.230.88.32", ServerName = "prod.horizon.sita.aero", HostURL = "https://prod.horizon.sita.aero" });
+            lstServer.Add(new PingServerDetail() { ServerIP = "57.230.80.200", ServerName = "hm.horizon.dc.sita.aero", HostURL = "https://hm.horizon.dc.sita.aero" });
 
             return lstServer;
         }
