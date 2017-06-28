@@ -81,7 +81,6 @@ namespace PingIP
             }
             #endregion
 
-            strResult.Append(Environment.NewLine);
             intPct = ((1) * 100) / (intTotalStepCount);
             bgw.ReportProgress(intPct, 1);
 
@@ -91,10 +90,13 @@ namespace PingIP
                 string strPingedServerIP = string.Empty;
                 strCheckServer = lstServer[i].ServerName;
                 serverIP = !string.IsNullOrEmpty(serverIP) ? serverIP : lstServer[i].ServerIP;
-                strResult.Append("***************** Server Name: " + strCheckServer + " *****************" + Environment.NewLine);
+                strResult.Append(Environment.NewLine + 
+                                 Environment.NewLine + 
+                                 "***************** Server: " + (!string.IsNullOrEmpty(strCheckServer) ? strCheckServer : serverIP) + " *****************" + 
+                                 Environment.NewLine);
 
                 #region STEP 2: LAUNCH BROWSER
-                if (lstServer[i].HostURL != null)
+                if (!string.IsNullOrEmpty(lstServer[i].HostURL))
                 {
                     strResult.Append(Environment.NewLine + "Checking health of applcation running on URL: " + lstServer[i].HostURL + Environment.NewLine);
                     try
@@ -123,71 +125,76 @@ namespace PingIP
                 }
                 #endregion
 
-                strResult.Append(Environment.NewLine + "PING " + strCheckServer + Environment.NewLine);
+                if(!string.IsNullOrEmpty(strCheckServer))
+                    strResult.Append(Environment.NewLine + "PING " + strCheckServer + Environment.NewLine);
+
                 intPct = (((4 * i) + 2) * 100) / (intTotalStepCount);
                 bgw.ReportProgress(intPct, i);
 
-                #region STEP 3: PING IP
-                try
+                if (!string.IsNullOrEmpty(strCheckServer))
                 {
-                    for (int j = 0; j < 4; j++)
+                    #region STEP 3: PING IP
+                    try
                     {
-                        PingReply pingResult = ping.Send(strCheckServer, 3000);
-
-                        if (j == 0 && pingResult.Address != null && string.IsNullOrEmpty(strPingedServerIP))
-                            strPingedServerIP = pingResult.Address.ToString();
-
-                        if (pingResult.Status == IPStatus.Success)
+                        for (int j = 0; j < 4; j++)
                         {
-                            strResult.AppendFormat(strPingFormat, strCheckServer, pingResult.Buffer.Length.ToString(), pingResult.RoundtripTime.ToString(), pingResult.Options.Ttl.ToString());
+                            PingReply pingResult = ping.Send(strCheckServer, 3000);
+
+                            if (j == 0 && pingResult.Address != null && string.IsNullOrEmpty(strPingedServerIP))
+                                strPingedServerIP = pingResult.Address.ToString();
+
+                            if (pingResult.Status == IPStatus.Success)
+                            {
+                                strResult.AppendFormat(strPingFormat, strCheckServer, pingResult.Buffer.Length.ToString(), pingResult.RoundtripTime.ToString(), pingResult.Options.Ttl.ToString());
+                            }
+                            else
+                            {
+                                strResult.Append(pingResult.Status.ToString() + Environment.NewLine);
+                            }
+                            pingResult = null;
                         }
-                        else
-                        {
-                            strResult.Append(pingResult.Status.ToString() + Environment.NewLine);
-                        }
-                        pingResult = null;
                     }
-                }
-                catch (Exception ex)
-                {
-                    strResult.Append("Unable to ping server due to: " + ex.Message + Environment.NewLine);
-                }
-
-                if (!string.IsNullOrEmpty(strPingedServerIP))
-                    strResult.Append("Server '" + strCheckServer + "' has IP: " + strPingedServerIP + Environment.NewLine);
-
-                strResult.Append(Environment.NewLine + "PING " + serverIP + Environment.NewLine);
-                try
-                {
-                    intPct = (int)(((4 * i) + 2.5) * 100) / (intTotalStepCount);
-                    bgw.ReportProgress(intPct, i);
-                }
-                catch { /*DO NOTHING*/}
-                try
-                {
-                    for (int j = 0; j < 4; j++)
+                    catch (Exception ex)
                     {
-                        PingReply pingResult = ping.Send(serverIP, 3000);
-
-                        if (j == 0 && pingResult.Address != null)
-                            serverIP = pingResult.Address.ToString();
-
-                        if (pingResult.Status == IPStatus.Success)
-                        {
-                            strResult.AppendFormat(strPingFormat, strCheckServer, pingResult.Buffer.Length.ToString(), pingResult.RoundtripTime.ToString(), pingResult.Options.Ttl.ToString());
-                        }
-                        else
-                        {
-                            strResult.Append(pingResult.Status.ToString() + Environment.NewLine);
-                        }
-                        pingResult = null;
+                        strResult.Append("Unable to ping server due to: " + ex.Message + Environment.NewLine);
                     }
+
+                    if (!string.IsNullOrEmpty(strPingedServerIP))
+                        strResult.Append("Server '" + strCheckServer + "' has IP: " + strPingedServerIP + Environment.NewLine);
+
+                    strResult.Append(Environment.NewLine + "PING " + serverIP + Environment.NewLine);
+                    try
+                    {
+                        intPct = (int)(((4 * i) + 2.5) * 100) / (intTotalStepCount);
+                        bgw.ReportProgress(intPct, i);
+                    }
+                    catch { /*DO NOTHING*/}
+                    try
+                    {
+                        for (int j = 0; j < 4; j++)
+                        {
+                            PingReply pingResult = ping.Send(serverIP, 3000);
+
+                            if (j == 0 && pingResult.Address != null)
+                                serverIP = pingResult.Address.ToString();
+
+                            if (pingResult.Status == IPStatus.Success)
+                            {
+                                strResult.AppendFormat(strPingFormat, strCheckServer, pingResult.Buffer.Length.ToString(), pingResult.RoundtripTime.ToString(), pingResult.Options.Ttl.ToString());
+                            }
+                            else
+                            {
+                                strResult.Append(pingResult.Status.ToString() + Environment.NewLine);
+                            }
+                            pingResult = null;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        strResult.Append("Unable to ping server due to: " + ex.Message + Environment.NewLine);
+                    }
+                    #endregion
                 }
-                catch (Exception ex)
-                {
-                    strResult.Append("Unable to ping server due to: " + ex.Message + Environment.NewLine);
-                }
-                #endregion
 
                 strResult.Append(Environment.NewLine + "TRACERT " + serverIP + Environment.NewLine);
                 intPct = (((4 * i) + 3) * 100) / (intTotalStepCount);
@@ -208,34 +215,38 @@ namespace PingIP
                 }
                 #endregion
 
-                strResult.Append(Environment.NewLine + "TELNET " + strCheckServer + Environment.NewLine);
+                if (!string.IsNullOrEmpty(strCheckServer))
+                    strResult.Append(Environment.NewLine + "TELNET " + strCheckServer + Environment.NewLine);
+
                 intPct = (((4 * i) + 4) * 100) / (intTotalStepCount);
                 bgw.ReportProgress(intPct, i);
 
-                #region STEP 5: TELNET CONNECTION
-                try
+                if (!string.IsNullOrEmpty(strCheckServer))
                 {
-                    foreach (int port in lstPort)
+                    #region STEP 5: TELNET CONNECTION
+                    try
                     {
-                        try
+                        foreach (int port in lstPort)
                         {
-                            strTelnetResult = objUtil.CheckTelnetConnection(strCheckServer, port);
-                        }
-                        catch (Exception ex)
-                        {
-                            strTelnetResult = ex.Message;
-                        }
+                            try
+                            {
+                                strTelnetResult = objUtil.CheckTelnetConnection(strCheckServer, port);
+                            }
+                            catch (Exception ex)
+                            {
+                                strTelnetResult = ex.Message;
+                            }
 
-                        strResult.Append(strCheckServer + " " + port + " " + strTelnetResult + Environment.NewLine);
+                            strResult.Append(strCheckServer + " " + port + " " + strTelnetResult + Environment.NewLine);
+                        }
                     }
-                }
-                catch (Exception ex)
-                {
-                    strResult.Append("Unable to Telnet server due to: " + ex.Message + Environment.NewLine);
-                }
+                    catch (Exception ex)
+                    {
+                        strResult.Append("Unable to Telnet server due to: " + ex.Message + Environment.NewLine);
+                    }
 
-                strResult.Append(Environment.NewLine + Environment.NewLine);
-                #endregion
+                    #endregion
+                }
 
                 intPct = (((4 * i) + 5) * 100) / (intTotalStepCount);
                 bgw.ReportProgress(intPct, i);
@@ -605,6 +616,7 @@ namespace PingIP
         private List<PingServerDetail> GetServerList()
         {
             List<PingServerDetail> lstServer = new List<PingServerDetail>();
+            lstServer.Add(new PingServerDetail() { ServerIP = "57.5.64.250", ServerName = "", HostURL = "" });
             lstServer.Add(new PingServerDetail() { ServerIP = "57.191.128.244", ServerName = "americas.aticloud.aero", HostURL = "https://americas.aticloud.aero/vpn/index.html" });
             lstServer.Add(new PingServerDetail() { ServerIP = "57.241.128.244", ServerName = "americas-can.aticloud.aero", HostURL = "https://americas-can.aticloud.aero" });
             lstServer.Add(new PingServerDetail() { ServerIP = "57.255.52.37", ServerName = "americas-pss.aticloud.aero", HostURL = "https://americas-pss.aticloud.aero" });
